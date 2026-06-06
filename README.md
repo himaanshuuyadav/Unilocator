@@ -22,20 +22,17 @@ Found a bug or have a feature request?
 
 ### Render Deployment
 
-This repository now includes `render.yaml` and `runtime.txt` for deploying the Flask app on Render.
+The full beginner-friendly deployment guide is in [DEPLOYMENT.md](./DEPLOYMENT.md).
 
-1. Create a new **Web Service** on Render and connect this repository.
-2. Keep the default build command from `render.yaml`: `pip install -r requirements.txt`.
-3. Use the default start command from `render.yaml`: `python run.py`.
-4. Add these environment variables in Render:
-   - `SECRET_KEY`
-   - `FIREBASE_PROJECT_ID`
-   - `FIREBASE_SERVICE_ACCOUNT_JSON`
-   - `FLASK_DEBUG=false`
-   - `SOCKETIO_ASYNC_MODE=eventlet`
-5. Set the runtime to Python 3.11.9, which is defined in `runtime.txt`.
+Quick summary:
 
-If you prefer to keep the Firebase service account in a file during local development, the app still supports `service-account-key.json` at the repository root.
+1. Create a Render Web Service from this repository.
+2. Use `pip install -r requirements.txt` as the build command.
+3. Use `python run.py` as the start command.
+4. Set the required environment variables in Render, especially `SECRET_KEY`, `FIREBASE_PROJECT_ID`, and `FIREBASE_SERVICE_ACCOUNT_JSON`.
+5. Keep the runtime aligned with [runtime.txt](./runtime.txt).
+
+Do not commit `service-account-key.json` to GitHub. Use `FIREBASE_SERVICE_ACCOUNT_JSON` on Render instead.
 
 ### Production Checklist
 

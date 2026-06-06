@@ -32,4 +32,10 @@ if __name__ == '__main__':
     print(f"Local IP detected: {local_ip}")
     print(f"Open http://{local_ip}:{port} in your browser.")
     print("Or use http://localhost:5000 for local access only.")
-    socketio.run(app, host='0.0.0.0', port=port, debug=debug)
+    socketio.run(
+        app,
+        host='0.0.0.0',
+        port=port,
+        debug=debug,
+        allow_unsafe_werkzeug=True
+    )

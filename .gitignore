@@ -65,7 +65,6 @@ backup/
 # Firebase (keep config private)
 firebase_auth/config/firebase-config.js
 firebase_auth/config/firebase-config.json
-firebase_auth/web/firebase-config-cdn.js
 .env
 .env.local
 .env.production
@@ -87,4 +86,7 @@ Application/
 **/local.properties
 
 # VS Code Code Runner
-tempCodeRunnerFile.*service-account-key.json
+tempCodeRunnerFile.*
+
+# Google service account key
+service-account-key.json

@@ -19,8 +19,8 @@
                 <hr>
                 <div class="input-group">
                     <div class="input-wrapper">
-                        <i class="fas fa-envelope"></i>
-                        <input type="email" placeholder="Email" id="email" required>
+                        <i class="fas fa-user"></i>
+                        <input type="text" placeholder="Email or Username" id="identifier" required>
                     </div>
 
                     <div class="input-wrapper password">
@@ -66,7 +66,7 @@
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const email = document.getElementById('email').value;
+            const identifier = document.getElementById('identifier').value;
             const password = document.getElementById('password').value;
 
             // Show loading state
@@ -76,7 +76,7 @@
 
             try {
                 console.log('[DEBUG] Starting Firebase login...');
-                const result = await window.authService.login(email, password);
+                const result = await window.authService.login(identifier, password);
                 console.log('[DEBUG] Firebase login result:', result);
                 
                 if (result.success && result.user && result.user.uid) {

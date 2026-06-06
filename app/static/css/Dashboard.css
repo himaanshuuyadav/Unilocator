@@ -426,6 +426,22 @@ body {
     font-size: 1.1rem;
 }
 
+.add-device-btn.secondary {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 10px 16px;
+    font-size: 0.9rem;
+    box-shadow: none;
+}
+
+.add-device-btn.secondary:hover {
+    background: var(--accent);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(4, 122, 57, 0.3);
+}
+
 /* Device Grid */
 /* Devices Grid */
 .devices-grid {
@@ -446,7 +462,7 @@ body {
     border: none;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 8px;
     position: relative;
 }
 
@@ -483,6 +499,25 @@ body {
     color: #ffffff;
     margin: 0;
     line-height: 1.2;
+}
+
+/* Device Details */
+.device-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 8px 0;
+}
+
+.device-model {
+    font-size: 0.9rem;
+    color: #cccccc;
+    font-weight: 500;
+}
+
+.device-os {
+    font-size: 0.85rem;
+    color: #888888;
 }
 
 /* Status Badge */
@@ -1313,4 +1348,269 @@ body {
 .nav-item.active .nav-link {
     color: black;
     font-weight: 500;
+}
+/* Battery Status */
+.device-battery {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
+    border-radius: 8px;
+    font-size: 0.9em;
+    color: var(--accent-light);
+    font-weight: 600;
+}
+
+.device-battery i {
+    font-size: 1.2em;
+}
+
+.battery-level {
+    font-weight: 600;
+}
+
+/* Battery charging animation */
+.device-battery i.fa-bolt {
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* History Button */
+.history-btn {
+    flex: 1;
+    background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-size: 0.9em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.history-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(139, 92, 246, 0.3);
+}
+
+/* Location History Modal */
+.history-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: fadeInModal 0.3s ease;
+}
+
+@keyframes fadeInModal {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.history-modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    max-width: 800px;
+    width: 90%;
+    max-height: 90vh;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+}
+
+.history-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 30px;
+    border-bottom: 2px solid var(--border);
+}
+
+.history-modal-header h2 {
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+}
+
+.close-modal {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: color 0.3s;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.close-modal:hover {
+    color: var(--text-primary);
+    background: var(--bg-light);
+}
+
+.history-controls {
+    display: flex;
+    gap: 10px;
+    padding: 15px 30px;
+    background: var(--bg-light);
+    border-bottom: 1px solid var(--border);
+}
+
+.history-btn-filter {
+    padding: 8px 16px;
+    border: 2px solid var(--border);
+    background: var(--bg-card);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 600;
+    color: var(--text-secondary);
+    transition: all 0.3s;
+}
+
+.history-btn-filter:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.history-btn-filter.active {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+    border-color: var(--accent);
+    color: white;
+}
+
+.history-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 30px;
+}
+
+.history-item {
+    padding: 15px;
+    background: var(--bg-light);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s;
+    border: 1px solid var(--border);
+}
+
+.history-item:hover {
+    background: var(--bg-card);
+    transform: translateX(5px);
+    border-color: var(--accent);
+}
+
+.history-time {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.history-coords {
+    font-family: 'Courier New', monospace;
+    color: var(--text-primary);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.history-accuracy {
+    color: var(--text-muted);
+    font-size: 0.85em;
+}
+
+.history-chart {
+    padding: 20px 30px;
+    background: var(--bg-light);
+    border-top: 1px solid var(--border);
+}
+
+.history-chart canvas {
+    width: 100%;
+    height: 300px;
+}
+
+.loading-spinner {
+    text-align: center;
+    padding: 40px;
+    color: var(--accent);
+    font-size: 1.2em;
+}
+
+.loading-spinner i {
+    font-size: 2em;
+    margin-bottom: 10px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.error-message, .no-history {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-secondary);
+    font-size: 1.1em;
+}
+
+.error-message {
+    color: var(--danger);
+}
+
+.error-message i, .no-history i {
+    font-size: 2em;
+    margin-bottom: 10px;
+    display: block;
+}
+
+/* Responsive Design for History Modal */
+@media (max-width: 768px) {
+    .history-modal-content {
+        width: 95%;
+        max-height: 95vh;
+    }
+    
+    .history-modal-header, .history-controls, .history-content, .history-chart {
+        padding: 15px 20px;
+    }
+    
+    .history-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
 }

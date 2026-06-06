@@ -21,6 +21,7 @@
                     <div class="input-wrapper">
                         <i class="fas fa-user"></i>
                         <input type="text" placeholder="Username" id="username" required>
+                        <div id="usernameStatus" class="username-status"></div>
                     </div>
 
                     <div class="input-wrapper">
@@ -61,6 +62,80 @@
         const registerForm = document.getElementById('registerForm');
         const registerBtn = document.getElementById('registerBtn');
         const errorMessage = document.getElementById('errorMessage');
+        const usernameInput = document.getElementById('username');
+        const usernameStatus = document.getElementById('usernameStatus');
+        
+        let usernameCheckTimeout;
+        let isUsernameAvailable = false;
+
+        // Real-time username availability checking
+        usernameInput.addEventListener('input', function() {
+            const username = this.value.trim();
+            
+            // Clear previous timeout
+            clearTimeout(usernameCheckTimeout);
+            
+            if (username.length === 0) {
+                usernameStatus.textContent = '';
+                usernameStatus.className = 'username-status';
+                isUsernameAvailable = false;
+                updateRegisterButton();
+                return;
+            }
+            
+            if (username.length < 3) {
+                usernameStatus.textContent = 'Username must be at least 3 characters long';
+                usernameStatus.className = 'username-status error';
+                isUsernameAvailable = false;
+                updateRegisterButton();
+                return;
+            }
+            
+            // Show checking state
+            usernameStatus.textContent = 'Checking availability...';
+            usernameStatus.className = 'username-status checking';
+            isUsernameAvailable = false;
+            updateRegisterButton();
+            
+            // Debounce username checking (wait 500ms after user stops typing)
+            usernameCheckTimeout = setTimeout(async () => {
+                try {
+                    const result = await window.authService.checkUsernameAvailability(username);
+                    
+                    if (result.available) {
+                        usernameStatus.textContent = result.message;
+                        usernameStatus.className = 'username-status success';
+                        isUsernameAvailable = true;
+                    } else {
+                        usernameStatus.textContent = result.message;
+                        usernameStatus.className = 'username-status error';
+                        isUsernameAvailable = false;
+                    }
+                } catch (error) {
+                    usernameStatus.textContent = 'Error checking username availability';
+                    usernameStatus.className = 'username-status error';
+                    isUsernameAvailable = false;
+                }
+                updateRegisterButton();
+            }, 500);
+        });
+        
+        function updateRegisterButton() {
+            const username = usernameInput.value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            
+            const isFormValid = username.length > 0 && 
+                              email.length > 0 && 
+                              password.length >= 6 && 
+                              isUsernameAvailable;
+            
+            registerBtn.disabled = !isFormValid;
+        }
+        
+        // Update button state when other fields change
+        document.getElementById('email').addEventListener('input', updateRegisterButton);
+        document.getElementById('password').addEventListener('input', updateRegisterButton);
 
         // Check if user is already logged in
         if (window.authService && window.authService.isAuthenticated()) {

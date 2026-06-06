@@ -99,6 +99,10 @@
                                     <h2>Connected Devices</h2>
                                     <span class="device-count">{{ devices|length }} device{{ 's' if devices|length != 1 else '' }}</span>
                                 </div>
+                                <button id="addDeviceFromListBtn" class="add-device-btn secondary" onclick="window.openAddDeviceModal()">
+                                    <i class="fas fa-plus"></i>
+                                    <span>Add Device</span>
+                                </button>
                             </div>
                             <div class="devices-grid">
                                 {% for device in devices %}
@@ -123,18 +127,26 @@
                                         <!-- Device Name -->
                                         <h3 class="device-name">{{ device.name or device.device_name or 'Unknown Device' }}</h3>
                                         
+                                        <!-- Device Details -->
+                                        <!-- {% if device.device_model and device.device_model != 'Unknown' %}
+                                        <div class="device-details">
+                                            <span class="device-model">{{ device.brand }} {{ device.device_model }}</span>
+                                            {% if device.android_version and device.android_version != 'Unknown' %}
+                                            <span class="device-os">Android {{ device.android_version }}</span>
+                                            {% endif %}
+                                        </div> -->
+                                        {% endif %}
+                                        
+                                        <!-- Battery Status -->
+                                        <div class="device-battery" data-device-id="{{ device.code }}">
+                                            <i class="fas fa-battery-three-quarters"></i>
+                                            <span class="battery-level">Loading...</span>
+                                        </div>
+                                        
                                         <!-- Last Seen Location -->
                                         <div class="device-location">
-                                            <i class="fas fa-map-marker-alt"></i>
-                                            <span>
-                                                {% if device.location and (device.location.lat != 0 or device.location.lng != 0) %}
-                                                    Location available
-                                                {% elif device.last_latitude is defined and device.last_longitude is defined and (device.last_latitude or device.last_longitude) %}
-                                                    Location available
-                                                {% else %}
-                                                    Location unknown
-                                                {% endif %}
-                                            </span>
+                                            <i class="fas fa-clock"></i>
+                                            <span>Last seen: {{ device.last_seen_at or 'Recently' }}</span>
                                         </div>
                                         
                                         <!-- Track Device Button -->
@@ -143,6 +155,10 @@
                                                 <i class="fas fa-location-arrow"></i>
                                                 <span>Track Device</span>
                                             </a>
+                                            <button class="history-btn" onclick="showLocationHistory('{{ device.code }}')">
+                                                <i class="fas fa-history"></i>
+                                                <span>History</span>
+                                            </button>
                                         </div>
                                     </div>
                                 {% endfor %}
@@ -614,9 +630,8 @@
 
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/Dashboard.js') }}"></script>
     <script src="{{ url_for('static', filename='js/add_devices.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/nav-animation.js') }}"></script>
 
     <!-- Firebase App (the core Firebase SDK) -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>

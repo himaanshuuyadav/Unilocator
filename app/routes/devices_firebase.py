@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, request, jsonif
 from flask_socketio import emit
 from app import socketio
 from functools import wraps
-from ..utils.firebase_rest_api import get_firebase_client, create_user_device_rest
+from ..utils.firebase_utils import get_firestore_db, generate_device_code
 import logging
 import secrets
 import string
@@ -13,6 +13,7 @@ import json
 import os
 from datetime import datetime, timedelta
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 bp = Blueprint('devices', __name__, url_prefix='/devices')
 
@@ -23,17 +24,10 @@ def verify_device():
     logging.info(f"[DEBUG] Received device_code from Android app: {device_code}")
     
     try:
-        client = get_firebase_client()
+        db = get_firestore_db()
         # Check if code exists in device_codes collection
-        where_clauses = [{
-            "fieldFilter": {
-                "field": {"fieldPath": "code"},
-                "op": "EQUAL",
-                "value": {"stringValue": device_code}
-            }
-        }]
-        
-        codes_docs = client.query_collection('device_codes', where_clauses, limit=1)
+        codes_ref = db.collection('device_codes').where(filter=FieldFilter('code', '==', device_code))
+        codes_docs = codes_ref.get()
         exists = len(codes_docs) > 0
         
         logging.info(f"[DEBUG] Exists in device_codes: {exists}")

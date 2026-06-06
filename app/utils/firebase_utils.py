@@ -5,6 +5,7 @@ Handles Firebase Admin SDK initialization and Firestore operations
 
 import firebase_admin
 from firebase_admin import credentials, firestore
+import json
 import os
 import logging
 import string
@@ -16,6 +17,25 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeou
 # Global Firebase Admin SDK instance
 _db = None
 
+
+def _load_service_account_credentials():
+    """Load Firebase service account credentials from env JSON or local file."""
+    service_account_json = os.environ.get('FIREBASE_SERVICE_ACCOUNT_JSON')
+    if service_account_json:
+        return credentials.Certificate(json.loads(service_account_json))
+
+    service_account_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+        'service-account-key.json'
+    )
+
+    if os.path.exists(service_account_path):
+        return credentials.Certificate(service_account_path)
+
+    raise FileNotFoundError(
+        'Firebase service account credentials not found. Set FIREBASE_SERVICE_ACCOUNT_JSON or add service-account-key.json.'
+    )
+
 def initialize_firebase():
     """Initialize Firebase Admin SDK"""
     global _db
@@ -24,22 +44,13 @@ def initialize_firebase():
         return _db
     
     try:
-        # Path to service account key
-        service_account_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
-            'service-account-key.json'
-        )
-        
-        if not os.path.exists(service_account_path):
-            raise FileNotFoundError(f"Service account key not found at {service_account_path}")
-        
         # Check if Firebase app is already initialized
         try:
             firebase_admin.get_app()
             logging.info("Firebase app already initialized")
         except ValueError:
             # Initialize Firebase Admin SDK
-            cred = credentials.Certificate(service_account_path)
+            cred = _load_service_account_credentials()
             firebase_admin.initialize_app(cred)
             logging.info("Firebase Admin SDK initialized")
         
@@ -167,7 +178,7 @@ def verify_device_code(input_code, connecting_user_id, connecting_user_email):
         db = get_firestore_db()
         
         # Find active code
-        codes_query = db.collection('user_device_codes').where('deviceCode', '==', input_code).where('isActive', '==', True).limit(1)
+        codes_query = db.collection('user_device_codes').where(filter=FieldFilter('deviceCode', '==', input_code)).where(filter=FieldFilter('isActive', '==', True)).limit(1)
         codes = codes_query.get()
         
         if not codes:
@@ -252,7 +263,7 @@ def get_user_devices(user_id):
         devices = []
         
         # Get devices owned by user
-        owned_devices = db.collection('device_connections').where('ownerId', '==', user_id).where('isActive', '==', True).get()
+        owned_devices = db.collection('device_connections').where(filter=FieldFilter('ownerId', '==', user_id)).where(filter=FieldFilter('isActive', '==', True)).get()
         for doc in owned_devices:
             device_data = doc.to_dict()
             device_data['id'] = doc.id
@@ -260,7 +271,7 @@ def get_user_devices(user_id):
             devices.append(device_data)
         
         # Get devices connected to by user
-        connected_devices = db.collection('device_connections').where('connectedUserId', '==', user_id).where('isActive', '==', True).get()
+        connected_devices = db.collection('device_connections').where(filter=FieldFilter('connectedUserId', '==', user_id)).where(filter=FieldFilter('isActive', '==', True)).get()
         for doc in connected_devices:
             device_data = doc.to_dict()
             device_data['id'] = doc.id
@@ -544,7 +555,7 @@ def verify_device_code_mobile_safe(input_code, connecting_user_id, connecting_us
             db = get_firestore_db()
             
             # Find active code with timeout protection
-            codes_query = db.collection('user_device_codes').where('deviceCode', '==', input_code).where('isActive', '==', True).limit(1)
+            codes_query = db.collection('user_device_codes').where(filter=FieldFilter('deviceCode', '==', input_code)).where(filter=FieldFilter('isActive', '==', True)).limit(1)
             codes = codes_query.get()
             
             if not codes:
@@ -666,7 +677,7 @@ def verify_device_code_safe(input_code, connecting_user_id, connecting_user_emai
             logging.info(f"[VERIFY-SAFE] Searching for code: {input_code}")
             
             # Find active code with simpler query
-            codes_query = db.collection('user_device_codes').where('deviceCode', '==', input_code).where('isActive', '==', True).limit(1)
+            codes_query = db.collection('user_device_codes').where(filter=FieldFilter('deviceCode', '==', input_code)).where(filter=FieldFilter('isActive', '==', True)).limit(1)
             codes = codes_query.get()
             
             if not codes:

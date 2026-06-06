@@ -16,16 +16,15 @@ class FirebaseWebClient {
                 return false;
             }
             
-            // Firebase config - will be injected by template
-            // This config should be loaded via server-side template rendering
-            const firebaseConfig = window.FIREBASE_CONFIG || {
-                apiKey: "FIREBASE_API_KEY_PLACEHOLDER",
-                authDomain: "FIREBASE_AUTH_DOMAIN_PLACEHOLDER",
-                projectId: "FIREBASE_PROJECT_ID_PLACEHOLDER",
-                storageBucket: "FIREBASE_STORAGE_BUCKET_PLACEHOLDER",
-                messagingSenderId: "FIREBASE_MESSAGING_SENDER_ID_PLACEHOLDER",
-                appId: "FIREBASE_APP_ID_PLACEHOLDER",
-                measurementId: "FIREBASE_MEASUREMENT_ID_PLACEHOLDER"
+            // Firebase config - using the project ID that matches our service account
+            const firebaseConfig = {
+                apiKey: "AIzaSyDJKLcI6OdqXmgkzn1bhpgMOhkUzIu5VnU",
+                authDomain: "unilocator-368db.firebaseapp.com",  // Updated to match service account
+                projectId: "unilocator-368db",  // Updated to match service account
+                storageBucket: "unilocator-368db.firebasestorage.app",  // Updated to match service account
+                messagingSenderId: "869071769329",
+                appId: "1:869071769329:web:82097ccdd33b1de02b69b9",
+                measurementId: "G-53NZV6M1VH"
             };
 
             console.log("🔧 Firebase config loaded:", firebaseConfig.projectId);

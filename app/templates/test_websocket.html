@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test - UniLocator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .status-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        
+        .status-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-dot.connected {
+            background: #10b981;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+        }
+        
+        .status-dot.disconnected {
+            background: #ef4444;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+        }
+        
+        .status-dot.connecting {
+            background: #f59e0b;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.6);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .test-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .test-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        .test-button:active {
+            transform: translateY(0);
+        }
+        
+        .test-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .log-container {
+            background: #1a1a1a;
+            color: #10b981;
+            border-radius: 10px;
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+        
+        .log-entry {
+            padding: 5px;
+            border-bottom: 1px solid #333;
+            margin-bottom: 5px;
+        }
+        
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        
+        .log-entry.success { color: #10b981; }
+        .log-entry.error { color: #ef4444; }
+        .log-entry.warning { color: #f59e0b; }
+        .log-entry.info { color: #3b82f6; }
+        
+        .timestamp {
+            opacity: 0.6;
+            margin-right: 10px;
+        }
+        
+        .clear-log {
+            float: right;
+            background: transparent;
+            border: 1px solid #10b981;
+            color: #10b981;
+            padding: 5px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+        
+        .clear-log:hover {
+            background: #10b981;
+            color: white;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-box {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔌 WebSocket Testing Dashboard</h1>
+            <p>Real-time connection testing for UniLocator</p>
+        </div>
+        
+        <div class="status-card">
+            <h2>Connection Status</h2>
+            <div class="status-indicator">
+                <div class="status-dot connecting" id="statusDot"></div>
+                <span id="statusText">Connecting...</span>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-label">Messages Sent</div>
+                    <div class="stat-value" id="messagesSent">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Messages Received</div>
+                    <div class="stat-value" id="messagesReceived">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Reconnections</div>
+                    <div class="stat-value" id="reconnections">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Latency</div>
+                    <div class="stat-value" id="latency">--</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="status-card">
+            <h2>Test Actions</h2>
+            <div class="test-grid">
+                <button class="test-button" onclick="testEcho()">📡 Test Echo</button>
+                <button class="test-button" onclick="testDeviceUpdate()">📱 Simulate Device Update</button>
+                <button class="test-button" onclick="testLocationUpdate()">📍 Simulate Location</button>
+                <button class="test-button" onclick="testPing()">⏱️ Measure Latency</button>
+                <button class="test-button" onclick="testDisconnect()">🔌 Disconnect</button>
+                <button class="test-button" onclick="testReconnect()">🔄 Reconnect</button>
+            </div>
+        </div>
+        
+        <div class="status-card">
+            <button class="clear-log" onclick="clearLog()">Clear Log</button>
+            <h2>Event Log</h2>
+            <div class="log-container" id="logContainer">
+                <div class="log-entry info">
+                    <span class="timestamp">Initializing...</span>
+                    <span>WebSocket test dashboard loaded</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        let socket;
+        let messagesSent = 0;
+        let messagesReceived = 0;
+        let reconnections = 0;
+        let pingTime = null;
+
+        function initializeSocket() {
+            addLog('info', 'Initializing Socket.IO connection...');
+            
+            socket = io({
+                transports: ['polling', 'websocket'],
+                reconnectionAttempts: 10,
+                reconnectionDelay: 1000,
+                timeout: 5000
+            });
+
+            // Connection events
+            socket.on('connect', () => {
+                updateStatus('connected', 'Connected to server');
+                addLog('success', `✓ Connected! Socket ID: ${socket.id}`);
+            });
+
+            socket.on('disconnect', (reason) => {
+                updateStatus('disconnected', 'Disconnected');
+                addLog('error', `✗ Disconnected: ${reason}`);
+            });
+
+            socket.on('connect_error', (error) => {
+                updateStatus('disconnected', 'Connection Error');
+                addLog('error', `✗ Connection error: ${error.message}`);
+            });
+
+            socket.on('reconnect', (attemptNumber) => {
+                reconnections++;
+                updateStat('reconnections', reconnections);
+                addLog('warning', `↻ Reconnected after ${attemptNumber} attempts`);
+            });
+
+            socket.on('reconnect_attempt', (attemptNumber) => {
+                updateStatus('connecting', `Reconnecting (attempt ${attemptNumber})...`);
+                addLog('warning', `↻ Reconnection attempt ${attemptNumber}...`);
+            });
+
+            // Custom events
+            socket.on('server_status', (data) => {
+                messagesReceived++;
+                updateStat('messagesReceived', messagesReceived);
+                addLog('info', `📊 Server status: ${JSON.stringify(data)}`);
+            });
+
+            socket.on('device_connected', (data) => {
+                messagesReceived++;
+                updateStat('messagesReceived', messagesReceived);
+                addLog('success', `📱 Device connected: ${data.device_name || data.id}`);
+            });
+
+            socket.on('location_update', (data) => {
+                messagesReceived++;
+                updateStat('messagesReceived', messagesReceived);
+                addLog('info', `📍 Location update: ${data.device_id} at [${data.lat}, ${data.lng}]`);
+            });
+
+            socket.on('echo', (data) => {
+                messagesReceived++;
+                updateStat('messagesReceived', messagesReceived);
+                addLog('success', `↩️ Echo received: ${data.message}`);
+            });
+
+            socket.on('pong', (data) => {
+                if (pingTime) {
+                    const latency = Date.now() - pingTime;
+                    updateStat('latency', `${latency}ms`);
+                    addLog('info', `⏱️ Latency: ${latency}ms`);
+                    pingTime = null;
+                }
+                messagesReceived++;
+                updateStat('messagesReceived', messagesReceived);
+            });
+        }
+
+        function updateStatus(status, text) {
+            const dot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            
+            dot.className = `status-dot ${status}`;
+            statusText.textContent = text;
+        }
+
+        function updateStat(statId, value) {
+            document.getElementById(statId).textContent = value;
+        }
+
+        function addLog(type, message) {
+            const logContainer = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.innerHTML = `<span class="timestamp">[${timestamp}]</span><span>${message}</span>`;
+            
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('logContainer').innerHTML = '';
+            addLog('info', 'Log cleared');
+        }
+
+        function testEcho() {
+            if (!socket || !socket.connected) {
+                addLog('error', '✗ Socket not connected');
+                return;
+            }
+            
+            const message = 'Hello from WebSocket test!';
+            socket.emit('echo', { message });
+            messagesSent++;
+            updateStat('messagesSent', messagesSent);
+            addLog('info', `→ Sent echo: ${message}`);
+        }
+
+        function testDeviceUpdate() {
+            if (!socket || !socket.connected) {
+                addLog('error', '✗ Socket not connected');
+                return;
+            }
+            
+            const testDevice = {
+                id: 'TEST_' + Date.now(),
+                device_name: 'Test Device',
+                device_code: 'TEST1234'
+            };
+            
+            socket.emit('device_connected', testDevice);
+            messagesSent++;
+            updateStat('messagesSent', messagesSent);
+            addLog('info', `→ Sent device update: ${testDevice.device_name}`);
+        }
+
+        function testLocationUpdate() {
+            if (!socket || !socket.connected) {
+                addLog('error', '✗ Socket not connected');
+                return;
+            }
+            
+            const location = {
+                device_id: 'TEST_DEVICE',
+                lat: 40.7128 + (Math.random() - 0.5) * 0.1,
+                lng: -74.0060 + (Math.random() - 0.5) * 0.1,
+                timestamp: Date.now()
+            };
+            
+            socket.emit('location_update', location);
+            messagesSent++;
+            updateStat('messagesSent', messagesSent);
+            addLog('info', `→ Sent location: [${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}]`);
+        }
+
+        function testPing() {
+            if (!socket || !socket.connected) {
+                addLog('error', '✗ Socket not connected');
+                return;
+            }
+            
+            pingTime = Date.now();
+            socket.emit('ping');
+            messagesSent++;
+            updateStat('messagesSent', messagesSent);
+            addLog('info', '→ Ping sent, waiting for pong...');
+        }
+
+        function testDisconnect() {
+            if (!socket) {
+                addLog('error', '✗ Socket not initialized');
+                return;
+            }
+            
+            socket.disconnect();
+            addLog('warning', '→ Manual disconnect requested');
+        }
+
+        function testReconnect() {
+            if (!socket) {
+                addLog('error', '✗ Socket not initialized');
+                return;
+            }
+            
+            socket.connect();
+            addLog('info', '→ Reconnection requested');
+        }
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            initializeSocket();
+        });
+    </script>
+</body>
+</html>

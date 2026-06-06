@@ -1,3 +1,6 @@
+import os
+import sys
+
 from flask import Flask
 from flask_socketio import SocketIO
 from flask_cors import CORS
@@ -13,8 +16,15 @@ def create_app():
     # Enable CORS for all routes
     CORS(app, resources={r"/*": {"origins": "*"}})
     
-    # Initialize SocketIO
-    socketio.init_app(app, cors_allowed_origins="*")
+    socketio_async_mode = os.environ.get("SOCKETIO_ASYNC_MODE")
+    if not socketio_async_mode:
+        if os.name == "nt" or sys.version_info >= (3, 14):
+            socketio_async_mode = "threading"
+        else:
+            socketio_async_mode = "eventlet"
+
+    # Initialize SocketIO with an async mode that works locally and on Render.
+    socketio.init_app(app, cors_allowed_origins="*", async_mode=socketio_async_mode)
     
     # Setup Flask-JWT-Extended
     app.config['JWT_SECRET_KEY'] = 'your-very-secret-key'  # Use a strong secret!
@@ -26,14 +36,15 @@ def create_app():
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
     app.config['SESSION_COOKIE_SECURE'] = False  # Set to True if using HTTPS
     
-    # Initialize Firebase
+    # Initialize Firebase REST API client
     try:
-        from .utils.firebase_utils import initialize_firebase
-        initialize_firebase()
-        print("✅ Firebase Admin SDK initialized successfully")
+        from .utils.firebase_rest_api import get_firebase_client
+        # Test the client
+        client = get_firebase_client()
+        print("✅ Firebase REST API client initialized successfully")
     except Exception as e:
-        print(f"❌ Failed to initialize Firebase: {e}")
-        # You can decide whether to continue without Firebase or exit
+        print(f"❌ Failed to initialize Firebase REST API client: {e}")
+        # Continue without Firebase - app will still work with limited functionality
     
     # Register blueprints
     from .routes import devices, main, api, auth
@@ -42,13 +53,10 @@ def create_app():
     app.register_blueprint(api.bp)
     app.register_blueprint(auth.bp)
     
-    # Make config available to templates
-    @app.context_processor
-    def inject_config():
-        return {'config': app.config}
+    # Import WebSocket handlers
+    from .routes import websocket_handlers
     
     # Serve Firebase web auth static files
-    import os
     from flask import send_from_directory
 
     @app.route('/firebase_auth/web/<path:filename>')

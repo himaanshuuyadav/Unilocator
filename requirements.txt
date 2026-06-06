@@ -4,15 +4,11 @@ Flask-CORS==4.0.0
 Flask-JWT-Extended==4.6.0
 python-socketio==5.10.0
 python-engineio==4.8.0
-gevent==23.7.0
-gevent-websocket==0.10.1
+eventlet==0.33.3
 Werkzeug==3.0.1
 qrcode==7.4.2
-Pillow==11.2.1
+Pillow==12.2.0
 click==8.1.7
 pytest==7.4.3
 setuptools>=68.0.0
 firebase-admin==6.2.0
-python-dotenv==1.0.0
-google-auth==2.23.4
-requests==2.31.0

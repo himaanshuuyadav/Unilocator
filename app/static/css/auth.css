@@ -183,3 +183,36 @@ h2{
   background-color: #000; /* or transparent if using with other backgrounds */
   z-index: -1;
 }
+
+/* Username availability status styles */
+.username-status {
+  font-size: 11px;
+  margin-top: 5px;
+  padding: 2px 0;
+  min-height: 16px;
+  font-weight: bold;
+}
+
+.username-status.checking {
+  color: #ffa500;
+}
+
+.username-status.success {
+  color: #28a745;
+  
+}
+
+.username-status.error {
+  color: #dc3545;
+}
+
+/* Disabled button state */
+button:disabled {
+  background-color: #444;
+  color: #888;
+  cursor: not-allowed;
+}
+
+button:disabled:hover {
+  background-color: #444;
+}

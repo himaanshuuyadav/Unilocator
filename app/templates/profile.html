@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - UniLocator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/dashboard" class="nav-brand">
+                <i class="fas fa-map-marker-alt"></i> UniLocator
+            </a>
+            <div class="nav-links">
+                <a href="/dashboard" class="nav-link">
+                    <i class="fas fa-th-large"></i> Dashboard
+                </a>
+                <a href="/profile" class="nav-link active">
+                    <i class="fas fa-user"></i> Profile
+                </a>
+                <a href="/test-websocket" class="nav-link">
+                    <i class="fas fa-plug"></i> WebSocket Test
+                </a>
+                <a href="#" onclick="handleLogout()" class="nav-link">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="profile-header">
+            <div class="profile-avatar">
+                <i class="fas fa-user-circle"></i>
+            </div>
+            <div class="profile-info">
+                <h1 id="profileDisplayName">Loading...</h1>
+                <p class="profile-email" id="profileEmail">Loading...</p>
+                <p class="profile-joined">Member since: <span id="profileJoined">...</span></p>
+            </div>
+        </div>
+
+        <div class="profile-stats">
+            <div class="stat-card">
+                <i class="fas fa-mobile-alt"></i>
+                <div class="stat-value" id="deviceCount">{{ profile.device_count if profile else 0 }}</div>
+                <div class="stat-label">Devices</div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-calendar-alt"></i>
+                <div class="stat-value" id="accountAge">...</div>
+                <div class="stat-label">Days Active</div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-map-marker-alt"></i>
+                <div class="stat-value" id="lastLocation">--</div>
+                <div class="stat-label">Last Update</div>
+            </div>
+        </div>
+
+        <div class="profile-sections">
+            <!-- Account Information -->
+            <div class="section-card">
+                <div class="section-header">
+                    <h2><i class="fas fa-user-edit"></i> Account Information</h2>
+                    <button class="btn-edit" onclick="toggleEdit('account')">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                </div>
+                <div class="section-content">
+                    <form id="accountForm" class="profile-form">
+                        <div class="form-group">
+                            <label for="displayName">Display Name</label>
+                            <input type="text" id="displayName" name="displayName" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email Address</label>
+                            <input type="email" id="email" name="email" disabled>
+                            <small class="form-hint">Email cannot be changed</small>
+                        </div>
+                        <div class="form-actions hidden" id="accountActions">
+                            <button type="button" class="btn-primary" onclick="saveAccountChanges()">
+                                <i class="fas fa-save"></i> Save Changes
+                            </button>
+                            <button type="button" class="btn-secondary" onclick="cancelEdit('account')">
+                                <i class="fas fa-times"></i> Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Security Settings -->
+            <div class="section-card">
+                <div class="section-header">
+                    <h2><i class="fas fa-shield-alt"></i> Security Settings</h2>
+                </div>
+                <div class="section-content">
+                    <div class="security-item">
+                        <div class="security-info">
+                            <i class="fas fa-key"></i>
+                            <div>
+                                <h3>Change Password</h3>
+                                <p>Update your password to keep your account secure</p>
+                            </div>
+                        </div>
+                        <button class="btn-secondary" onclick="showChangePassword()">
+                            <i class="fas fa-edit"></i> Change
+                        </button>
+                    </div>
+                    <div class="security-item">
+                        <div class="security-info">
+                            <i class="fas fa-mobile-alt"></i>
+                            <div>
+                                <h3>Two-Factor Authentication</h3>
+                                <p>Add an extra layer of security (Coming Soon)</p>
+                            </div>
+                        </div>
+                        <button class="btn-secondary" disabled>
+                            <i class="fas fa-lock"></i> Coming Soon
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preferences -->
+            <div class="section-card">
+                <div class="section-header">
+                    <h2><i class="fas fa-cog"></i> Preferences</h2>
+                </div>
+                <div class="section-content">
+                    <div class="preference-item">
+                        <div class="preference-info">
+                            <h3>Email Notifications</h3>
+                            <p>Receive email alerts for device events</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="emailNotifications" onchange="updatePreference('emailNotifications', this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="preference-item">
+                        <div class="preference-info">
+                            <h3>Location Tracking</h3>
+                            <p>Enable real-time location updates for all devices</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="locationTracking" checked onchange="updatePreference('locationTracking', this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="preference-item">
+                        <div class="preference-info">
+                            <h3>Device History</h3>
+                            <p>Save location history for 30 days</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="deviceHistory" checked onchange="updatePreference('deviceHistory', this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Danger Zone -->
+            <div class="section-card danger-zone">
+                <div class="section-header">
+                    <h2><i class="fas fa-exclamation-triangle"></i> Danger Zone</h2>
+                </div>
+                <div class="section-content">
+                    <div class="danger-item">
+                        <div>
+                            <h3>Delete Account</h3>
+                            <p>Permanently delete your account and all associated data</p>
+                        </div>
+                        <button class="btn-danger" onclick="confirmDeleteAccount()">
+                            <i class="fas fa-trash-alt"></i> Delete Account
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="changePasswordModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-key"></i> Change Password</h2>
+                <button class="modal-close" onclick="hideChangePassword()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="changePasswordForm" onsubmit="changePassword(event)">
+                <div class="form-group">
+                    <label for="currentPassword">Current Password</label>
+                    <input type="password" id="currentPassword" required>
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">New Password</label>
+                    <input type="password" id="newPassword" required minlength="6">
+                    <small class="form-hint">Minimum 6 characters</small>
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm New Password</label>
+                    <input type="password" id="confirmPassword" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-save"></i> Update Password
+                    </button>
+                    <button type="button" class="btn-secondary" onclick="hideChangePassword()">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="/firebase_auth/web/firebase-config-cdn.js"></script>
+    
+    <script>
+        let currentUser = null;
+        let originalDisplayName = '';
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+
+        // Load user profile on page load
+        firebase.auth().onAuthStateChanged(async (user) => {
+            if (user) {
+                currentUser = user;
+                originalDisplayName = user.displayName || '';
+                
+                document.getElementById('profileDisplayName').textContent = user.displayName || 'Anonymous User';
+                document.getElementById('profileEmail').textContent = user.email;
+                document.getElementById('displayName').value = user.displayName || '';
+                document.getElementById('email').value = user.email;
+                
+                // Calculate account age
+                const createdAt = new Date(user.metadata.creationTime);
+                const now = new Date();
+                const daysDiff = Math.floor((now - createdAt) / (1000 * 60 * 60 * 24));
+                document.getElementById('accountAge').textContent = daysDiff;
+                document.getElementById('profileJoined').textContent = createdAt.toLocaleDateString();
+                
+                // Get last device update time
+                try {
+                    const response = await fetch('/api/debug-device-data', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'same-origin'
+                    });
+                    const data = await response.json();
+                    if (data.success && data.raw_devices && data.raw_devices.length > 0) {
+                        const latestDevice = data.raw_devices[0];
+                        const lastSeen = latestDevice.lastSeenAt;
+                        if (lastSeen) {
+                            const lastSeenDate = new Date(lastSeen);
+                            const minutesAgo = Math.floor((now - lastSeenDate) / (1000 * 60));
+                            if (minutesAgo < 60) {
+                                document.getElementById('lastLocation').textContent = `${minutesAgo}m ago`;
+                            } else {
+                                const hoursAgo = Math.floor(minutesAgo / 60);
+                                document.getElementById('lastLocation').textContent = `${hoursAgo}h ago`;
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error fetching device data:', error);
+                }
+            } else {
+                window.location.href = '/login';
+            }
+        });
+
+        function toggleEdit(section) {
+            if (section === 'account') {
+                document.getElementById('displayName').disabled = false;
+                document.getElementById('accountActions').classList.remove('hidden');
+            }
+        }
+
+        function cancelEdit(section) {
+            if (section === 'account') {
+                document.getElementById('displayName').disabled = true;
+                document.getElementById('displayName').value = originalDisplayName;
+                document.getElementById('accountActions').classList.add('hidden');
+            }
+        }
+
+        async function saveAccountChanges() {
+            const newDisplayName = document.getElementById('displayName').value.trim();
+            
+            if (!newDisplayName) {
+                showToast('Display name cannot be empty', 'error');
+                return;
+            }
+            
+            try {
+                await currentUser.updateProfile({
+                    displayName: newDisplayName
+                });
+                
+                originalDisplayName = newDisplayName;
+                document.getElementById('profileDisplayName').textContent = newDisplayName;
+                document.getElementById('displayName').disabled = true;
+                document.getElementById('accountActions').classList.add('hidden');
+                
+                showToast('Profile updated successfully!', 'success');
+            } catch (error) {
+                console.error('Error updating profile:', error);
+                showToast('Failed to update profile: ' + error.message, 'error');
+            }
+        }
+
+        function showChangePassword() {
+            document.getElementById('changePasswordModal').classList.add('active');
+        }
+
+        function hideChangePassword() {
+            document.getElementById('changePasswordModal').classList.remove('active');
+            document.getElementById('changePasswordForm').reset();
+        }
+
+        async function changePassword(event) {
+            event.preventDefault();
+            
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (newPassword !== confirmPassword) {
+                showToast('New passwords do not match', 'error');
+                return;
+            }
+            
+            if (newPassword.length < 6) {
+                showToast('Password must be at least 6 characters', 'error');
+                return;
+            }
+            
+            try {
+                // Reauthenticate user
+                const credential = firebase.auth.EmailAuthProvider.credential(
+                    currentUser.email,
+                    currentPassword
+                );
+                await currentUser.reauthenticateWithCredential(credential);
+                
+                // Update password
+                await currentUser.updatePassword(newPassword);
+                
+                hideChangePassword();
+                showToast('Password updated successfully!', 'success');
+            } catch (error) {
+                console.error('Error changing password:', error);
+                if (error.code === 'auth/wrong-password') {
+                    showToast('Current password is incorrect', 'error');
+                } else {
+                    showToast('Failed to change password: ' + error.message, 'error');
+                }
+            }
+        }
+
+        function updatePreference(pref, value) {
+            // Store preferences in localStorage for now
+            localStorage.setItem(pref, value);
+            showToast(`${pref} ${value ? 'enabled' : 'disabled'}`, 'success');
+        }
+
+        function confirmDeleteAccount() {
+            if (confirm('Are you sure you want to delete your account? This action cannot be undone!')) {
+                if (confirm('This will permanently delete all your devices and data. Are you absolutely sure?')) {
+                    deleteAccount();
+                }
+            }
+        }
+
+        async function deleteAccount() {
+            try {
+                const password = prompt('Please enter your password to confirm account deletion:');
+                if (!password) return;
+                
+                // Reauthenticate
+                const credential = firebase.auth.EmailAuthProvider.credential(
+                    currentUser.email,
+                    password
+                );
+                await currentUser.reauthenticateWithCredential(credential);
+                
+                // Delete account
+                await currentUser.delete();
+                
+                showToast('Account deleted successfully', 'success');
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
+            } catch (error) {
+                console.error('Error deleting account:', error);
+                showToast('Failed to delete account: ' + error.message, 'error');
+            }
+        }
+
+        async function handleLogout() {
+            try {
+                await firebase.auth().signOut();
+                
+                // Clear session
+                await fetch('/auth/logout', {
+                    method: 'POST',
+                    credentials: 'same-origin'
+                });
+                
+                window.location.href = '/';
+            } catch (error) {
+                console.error('Error logging out:', error);
+                showToast('Failed to logout', 'error');
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Load saved preferences
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('emailNotifications').checked = 
+                localStorage.getItem('emailNotifications') !== 'false';
+            document.getElementById('locationTracking').checked = 
+                localStorage.getItem('locationTracking') !== 'false';
+            document.getElementById('deviceHistory').checked = 
+                localStorage.getItem('deviceHistory') !== 'false';
+        });
+    </script>
+</body>
+</html>

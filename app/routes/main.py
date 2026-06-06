@@ -1,21 +1,59 @@
 from flask import Blueprint, render_template, redirect, url_for, request, g, jsonify, session
-import sqlite3
+from datetime import datetime
+
+def format_last_seen(timestamp_str):
+    """Convert ISO timestamp to readable format"""
+    if not timestamp_str:
+        return "Never"
+    
+    try:
+        # Parse ISO timestamp
+        if timestamp_str.endswith('Z'):
+            timestamp_str = timestamp_str[:-1] + '+00:00'
+        
+        dt = datetime.fromisoformat(timestamp_str)
+        now = datetime.now(dt.tzinfo) if dt.tzinfo else datetime.now()
+        
+        # Calculate time difference
+        diff = now - dt
+        
+        if diff.days > 0:
+            if diff.days == 1:
+                return "1 day ago"
+            elif diff.days < 7:
+                return f"{diff.days} days ago"
+            elif diff.days < 30:
+                weeks = diff.days // 7
+                return f"{weeks} week{'s' if weeks > 1 else ''} ago"
+            else:
+                months = diff.days // 30
+                return f"{months} month{'s' if months > 1 else ''} ago"
+        
+        hours = diff.seconds // 3600
+        minutes = (diff.seconds % 3600) // 60
+        
+        if hours > 0:
+            return f"{hours} hour{'s' if hours > 1 else ''} ago"
+        elif minutes > 0:
+            return f"{minutes} minute{'s' if minutes > 1 else ''} ago"
+        else:
+            return "Just now"
+    
+    except Exception as e:
+        print(f"[DEBUG] Error parsing timestamp {timestamp_str}: {e}")
+        return "Unknown"
 
 bp = Blueprint('main', __name__)
-
 
 # Route for /index to render the landing page (now index.html)
 @bp.route('/index')
 def index_page():
     return render_template('index.html')
 
-
 @bp.route('/')
 def index():
     # Show the landing page (index.html) for everyone
     return render_template('index.html')
-
-
 
 # Dashboard route: Only show if authenticated, else redirect to home
 @bp.route('/dashboard')
@@ -24,91 +62,78 @@ def dashboard():
     firebase_uid = session.get('user_id')
     print(f"[DEBUG] /dashboard session['user_id']: {firebase_uid}")
     if not firebase_uid:
-        print("[DEBUG] /dashboard: Not authenticated, redirecting to landing page.")
-        return redirect(url_for('main.index'))
+        print("[DEBUG] /dashboard: Not authenticated, redirecting to login page.")
+        return redirect(url_for('main.login_page'))
     
-    device_list = []
+    devices = []
     
     try:
-        # First, try to get devices from local SQLite database
-        conn = sqlite3.connect('instance/unilocator.db')
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT device_code, device_name, connected_at
-            FROM connected_devices
-            WHERE user_id = ?
-            ORDER BY connected_at DESC
-        """, (firebase_uid,))
-        devices = cursor.fetchall()
+        print(f"[DEBUG] /dashboard: About to fetch devices for user: {firebase_uid}")
         
-        for device in devices:
-            device_data = {
-                "code": device[0],
-                "name": device[1],
-                "device_name": device[1],
-                "connected_at": device[2],
-                "location": {"lat": 0.0, "lng": 0.0},
-                "status": "connected"
-            }
-            device_list.append(device_data)
+        # Use new REST API client
+        from app.utils.firebase_rest_api import fetch_user_devices_rest
+        
+        print("[DEBUG] /dashboard: Using REST API client...")
+        devices_list = fetch_user_devices_rest(firebase_uid)
+        
+        print(f"[DEBUG] /dashboard: REST API returned {len(devices_list)} devices")
+        
+        # Transform the REST API data to dashboard format
+        for device_data in devices_list:
+            print(f"[DEBUG] Processing device: {device_data.keys()}")
             
-        print(f"[DEBUG] Found {len(device_list)} devices in local database")
+            device_info = device_data.get('deviceInfo', {})
+            
+            # Try multiple sources for device name
+            device_name = (
+                device_data.get('deviceName') or  # Top level deviceName
+                device_info.get('deviceName') or  # Inside deviceInfo
+                device_data.get('deviceModel') or  # Fallback to model
+                'Unknown Device'
+            )
+            
+            # Try multiple sources for device model
+            device_model = (
+                device_data.get('deviceModel') or
+                device_info.get('deviceModel') or
+                'Unknown'
+            )
+            
+            # Format last seen timestamp
+            last_seen_raw = device_data.get('lastSeenAt', '')
+            last_seen_formatted = format_last_seen(last_seen_raw)
+            
+            device = {
+                'code': device_data.get('deviceId', device_data.get('deviceCode', 'unknown')),
+                'name': device_name,
+                'device_name': device_name,
+                'device_model': device_model,
+                'device_type': device_data.get('deviceType', 'android'),
+                'is_active': device_data.get('isActive', False),
+                'android_version': device_data.get('androidVersion', device_info.get('androidVersion', 'Unknown')),
+                'app_version': device_data.get('appVersion', device_info.get('appVersion', 'Unknown')),
+                'last_seen_at': last_seen_formatted,  # Use formatted timestamp
+                'last_seen_raw': last_seen_raw,  # Keep raw for debugging
+                'registered_at': device_data.get('registeredAt', ''),
+                'brand': device_data.get('brand', device_info.get('brand', 'Unknown')),
+                'manufacturer': device_data.get('manufacturer', device_info.get('manufacturer', 'Unknown')),
+                'location': {
+                    'latitude': device_data.get('latitude'),
+                    'longitude': device_data.get('longitude')
+                }
+            }
+            devices.append(device)
         
-        # If no devices in local DB, try Firebase (but don't wait for it)
-        if len(device_list) == 0:
-            try:
-                from ..utils.firebase_rest import get_rest_client
-                print("[DEBUG] No local devices, checking Firebase...")
+        print(f"[DEBUG] /dashboard: Successfully processed {len(devices)} devices")
+            
+        print(f"[DASHBOARD] Successfully loaded {len(devices)} devices from Firebase")
+        print(f"[DASHBOARD] Device names: {[d.get('name', 'Unknown') for d in devices]}")
                 
-                rest_client = get_rest_client()
-                if rest_client and rest_client.credentials:
-                    result = rest_client.fetch_user_devices(firebase_uid)
-                    if result['success'] and result['devices']:
-                        print(f"[DEBUG] Found {len(result['devices'])} devices in Firebase")
-                        
-                        # Format Firebase devices for display using correct structure
-                        for device in result['devices']:
-                            device_info = device.get('deviceInfo', {})
-                            firebase_device = {
-                                'code': device.get('deviceId', 'Unknown'),
-                                'name': device.get('deviceName', 'Unknown Device'),  # Direct field
-                                'device_name': device.get('deviceName', 'Unknown Device'),  # Direct field
-                                'model': device.get('deviceModel', 'Unknown Model'),  # Direct field
-                                'brand': device_info.get('brand', 'Unknown').title(),  # From deviceInfo
-                                'manufacturer': device_info.get('manufacturer', 'Unknown').title(),
-                                'android_version': device.get('androidVersion', 'Unknown'),  # Direct field
-                                'app_version': device.get('appVersion', 'Unknown'),  # Direct field
-                                'device_type': device.get('deviceType', 'android'),
-                                'is_active': device.get('isActive', False),
-                                'connected_at': device.get('registeredAt', 'Recently'),  # registeredAt field
-                                'last_seen': device.get('lastSeenAt', 'Recently'),  # lastSeenAt field
-                                'location': {
-                                    'lat': device.get('lastLocation', {}).get('latitude', 0),
-                                    'lng': device.get('lastLocation', {}).get('longitude', 0)
-                                },
-                                'status': 'connected' if device.get('isActive', False) else 'offline',
-                                'source': 'firebase'
-                            }
-                            device_list.append(firebase_device)
-                    else:
-                        print("[DEBUG] No devices found in Firebase")
-                else:
-                    print("[DEBUG] Firebase REST client not available")
-            except Exception as firebase_error:
-                print(f"[DEBUG] Firebase fetch error (non-critical): {firebase_error}")
-                # Continue with empty list - Firebase fetch is optional
-        
-        return render_template('dashboard.html', devices=device_list, user_name='User')
-        
     except Exception as e:
-        print(f"[DEBUG] Error loading dashboard: {e}")
-        return render_template('dashboard.html', devices=[], user_name='User', error="Failed to load dashboard. Please try again later."), 500
-    finally:
-        try:
-            conn.close()
-        except Exception:
-            pass
-
+        print(f"[DASHBOARD] Error fetching Firebase devices: {e}")
+        devices = []
+        
+    return render_template('Dashboard.html', devices=devices, user_name='User')
 
 
 # Home route (optional, can be removed if not needed)
@@ -131,25 +156,45 @@ def show_map(device_id):
 
 @bp.route('/get_location/<device_id>')
 def get_location(device_id):
-    # Fetch the latest location for the device from the database
+    # Fetch the latest location for the device from Firebase
     try:
-        conn = sqlite3.connect('instance/unilocator.db')
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT last_latitude, last_longitude, last_battery, last_network
-            FROM connected_devices
-            WHERE device_code = ?
-            ORDER BY connected_at DESC
-            LIMIT 1
-        """, (device_id,))
-        row = cursor.fetchone()
-        if row:
-            lat = row[0] if row[0] is not None else 0.0
-            lng = row[1] if row[1] is not None else 0.0
-            battery = row[2] if row[2] is not None else '--'
-            network = row[3] if row[3] is not None else '--'
+        from app.utils.firebase_rest_api import get_firebase_client
+        
+        firebase_uid = session.get('user_id')
+        if not firebase_uid:
+            return jsonify({'error': 'Not authenticated'}), 401
+            
+        client = get_firebase_client()
+        
+        # Find the device by device_code and user_id using REST API
+        where_clauses = [
+            {
+                "fieldFilter": {
+                    "field": {"fieldPath": "deviceId"},
+                    "op": "EQUAL",
+                    "value": {"stringValue": device_id}
+                }
+            },
+            {
+                "fieldFilter": {
+                    "field": {"fieldPath": "userId"},
+                    "op": "EQUAL",
+                    "value": {"stringValue": firebase_uid}
+                }
+            }
+        ]
+        
+        devices_docs = client.query_collection("user_devices", where_clauses, limit=1)
+        
+        if devices_docs:
+            device_data = client._convert_from_firestore_format(devices_docs[0])
+            lat = device_data.get('latitude', 0.0)
+            lng = device_data.get('longitude', 0.0)
+            battery = device_data.get('battery_level', '--')
+            network = device_data.get('network_type', '--')
         else:
             lat, lng, battery, network = 0.0, 0.0, '--', '--'
+            
         return jsonify({
             'lat': lat,
             'lng': lng,
@@ -159,11 +204,6 @@ def get_location(device_id):
     except Exception as e:
         print(f"Error getting location for device {device_id}: {e}")
         return jsonify({'error': 'Failed to get device location.'}), 500
-    finally:
-        try:
-            conn.close()
-        except Exception:
-            pass
 
 
 # Authentication routes - serve Firebase auth pages
@@ -196,32 +236,26 @@ def profile():
     firebase_uid = session.get('user_id')
     print(f"[DEBUG] /profile session['user_id']: {firebase_uid}")
     if not firebase_uid:
-        print("[DEBUG] /profile: Not authenticated, redirecting to landing page.")
-        return redirect(url_for('main.index'))
+        print("[DEBUG] /profile: Not authenticated, redirecting to login page.")
+        return redirect(url_for('main.login_page'))
     
     try:
-        conn = sqlite3.connect('instance/unilocator.db')
-        cursor = conn.cursor()
+        from app.utils.firebase_rest import FirebaseRestClient
         
-        # Get user info if available
-        cursor.execute("""
-            SELECT firebase_uid, created_at
-            FROM users
-            WHERE firebase_uid = ?
-        """, (firebase_uid,))
-        user_data = cursor.fetchone()
+        firebase_client = FirebaseRestClient()
+        device_count = 0
         
-        # Get device count for the user
-        cursor.execute("""
-            SELECT COUNT(*) FROM connected_devices WHERE user_id = ?
-        """, (firebase_uid,))
-        device_count = cursor.fetchone()[0]
-        
-        conn.close()
+        try:
+            # Get device count from Firebase
+            firebase_devices = firebase_client.fetch_user_devices(firebase_uid)
+            if firebase_devices and 'success' in firebase_devices and firebase_devices['success']:
+                device_count = len(firebase_devices.get('devices', []))
+        except Exception as e:
+            print(f"[DEBUG] Error fetching device count: {e}")
         
         profile_data = {
             'user_id': firebase_uid,
-            'created_at': user_data[1] if user_data else 'Unknown',
+            'created_at': 'Recently',  # Could implement user creation date in Firebase
             'device_count': device_count
         }
         
@@ -229,3 +263,13 @@ def profile():
     except Exception as e:
         print(f"[DEBUG] Error loading profile: {e}")
         return redirect(url_for('main.dashboard'))
+
+# WebSocket test page
+@bp.route('/test-websocket')
+def test_websocket():
+    """Render the WebSocket testing dashboard"""
+    try:
+        return render_template('test_websocket.html')
+    except Exception as e:
+        print(f"Error rendering WebSocket test page: {e}")
+        return "Error loading WebSocket test page.", 500

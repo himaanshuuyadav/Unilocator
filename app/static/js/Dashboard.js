@@ -223,7 +223,214 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeDeviceMenus();
 
     console.log('Main script initialized');
+    
+    // Load battery status for all devices
+    loadDeviceBatteryStatus();
 });
+
+// Load battery status for all devices
+function loadDeviceBatteryStatus() {
+    const batteryElements = document.querySelectorAll('.device-battery');
+    
+    batteryElements.forEach(element => {
+        const deviceId = element.dataset.deviceId;
+        if (deviceId) {
+            fetch(`/api/device/${deviceId}/battery`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateBatteryDisplay(element, data.battery_level, data.is_charging);
+                    } else {
+                        element.querySelector('.battery-level').textContent = '--';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading battery status:', error);
+                    element.querySelector('.battery-level').textContent = '--';
+                });
+        }
+    });
+}
+
+// Update battery display with icon and level
+function updateBatteryDisplay(element, level, isCharging) {
+    const icon = element.querySelector('i');
+    const levelSpan = element.querySelector('.battery-level');
+    
+    // Update icon based on battery level
+    if (isCharging) {
+        icon.className = 'fas fa-battery-bolt';
+        element.style.color = '#10b981';
+    } else if (level >= 75) {
+        icon.className = 'fas fa-battery-full';
+        element.style.color = '#10b981';
+    } else if (level >= 50) {
+        icon.className = 'fas fa-battery-three-quarters';
+        element.style.color = '#10b981';
+    } else if (level >= 25) {
+        icon.className = 'fas fa-battery-half';
+        element.style.color = '#f59e0b';
+    } else if (level >= 10) {
+        icon.className = 'fas fa-battery-quarter';
+        element.style.color = '#ef4444';
+    } else {
+        icon.className = 'fas fa-battery-empty';
+        element.style.color = '#ef4444';
+    }
+    
+    levelSpan.textContent = `${level}%`;
+}
+
+// Show location history modal
+function showLocationHistory(deviceId) {
+    const modal = document.createElement('div');
+    modal.className = 'history-modal';
+    modal.innerHTML = `
+        <div class="history-modal-content">
+            <div class="history-modal-header">
+                <h2><i class="fas fa-history"></i> Location History</h2>
+                <button class="close-modal" onclick="this.closest('.history-modal').remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="history-controls">
+                <button onclick="loadHistoryData('${deviceId}', 1)" class="history-btn-filter">Last 24 Hours</button>
+                <button onclick="loadHistoryData('${deviceId}', 7)" class="history-btn-filter active">Last 7 Days</button>
+                <button onclick="loadHistoryData('${deviceId}', 30)" class="history-btn-filter">Last 30 Days</button>
+            </div>
+            <div class="history-content" id="historyContent">
+                <div class="loading-spinner">
+                    <i class="fas fa-spinner fa-spin"></i> Loading history...
+                </div>
+            </div>
+            <div class="history-chart" id="historyChart">
+                <canvas id="locationChart"></canvas>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Load initial data (7 days)
+    loadHistoryData(deviceId, 7);
+    
+    // Close on outside click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+}
+
+// Load history data from API
+function loadHistoryData(deviceId, days) {
+    const content = document.getElementById('historyContent');
+    const chartCanvas = document.getElementById('locationChart');
+    
+    content.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Loading history...</div>';
+    
+    fetch(`/api/device/${deviceId}/location-history?days=${days}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayLocationHistory(data.history, content);
+                renderLocationChart(data.history, chartCanvas);
+            } else {
+                content.innerHTML = `<div class="error-message"><i class="fas fa-exclamation-circle"></i> ${data.error}</div>`;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading history:', error);
+            content.innerHTML = '<div class="error-message"><i class="fas fa-exclamation-circle"></i> Failed to load history</div>';
+        });
+}
+
+// Display location history as a list
+function displayLocationHistory(history, container) {
+    if (!history || history.length === 0) {
+        container.innerHTML = '<div class="no-history"><i class="fas fa-map-marker-alt"></i> No location history available</div>';
+        return;
+    }
+    
+    const html = history.map(location => {
+        const date = new Date(location.timestamp);
+        const timeStr = date.toLocaleString();
+        
+        return `
+            <div class="history-item">
+                <div class="history-time">
+                    <i class="fas fa-clock"></i>
+                    ${timeStr}
+                </div>
+                <div class="history-coords">
+                    <i class="fas fa-map-marker-alt"></i>
+                    ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}
+                </div>
+                ${location.accuracy ? `<div class="history-accuracy">±${location.accuracy}m</div>` : ''}
+            </div>
+        `;
+    }).join('');
+    
+    container.innerHTML = html;
+}
+
+// Render location history chart
+function renderLocationChart(history, canvas) {
+    if (!history || history.length === 0) return;
+    
+    const ctx = canvas.getContext('2d');
+    
+    // Simple line chart showing movement over time
+    const timestamps = history.map(h => new Date(h.timestamp).toLocaleTimeString());
+    const latitudes = history.map(h => h.latitude);
+    const longitudes = history.map(h => h.longitude);
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Set canvas size
+    canvas.width = canvas.parentElement.clientWidth;
+    canvas.height = 300;
+    
+    // Draw grid
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 5; i++) {
+        const y = (canvas.height / 5) * i;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+    }
+    
+    // Draw latitude line
+    ctx.strokeStyle = '#667eea';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    
+    const latMin = Math.min(...latitudes);
+    const latMax = Math.max(...latitudes);
+    const latRange = latMax - latMin || 0.001;
+    
+    latitudes.forEach((lat, index) => {
+        const x = (canvas.width / (latitudes.length - 1)) * index;
+        const y = canvas.height - ((lat - latMin) / latRange) * canvas.height;
+        
+        if (index === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+    });
+    ctx.stroke();
+    
+    // Add legend
+    ctx.font = '12px sans-serif';
+    ctx.fillStyle = '#667eea';
+    ctx.fillText('Movement Pattern', 10, 20);
+}
+
+console.log('Main script initialized');
 
 // Device Action Functions
 function locateDevice(deviceId) {

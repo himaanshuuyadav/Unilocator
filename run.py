@@ -1,4 +1,5 @@
 import logging
+import os
 import socket
 from app import create_app, socketio
 
@@ -25,8 +26,10 @@ app = create_app()
 
 if __name__ == '__main__':
     local_ip = get_local_ip()
+    port = int(os.environ.get('PORT', '5000'))
+    debug = os.environ.get('FLASK_DEBUG', 'true').lower() == 'true'
     print("Starting UniLocator server...")
     print(f"Local IP detected: {local_ip}")
-    print(f"Open http://{local_ip}:5000 in your browser.")
+    print(f"Open http://{local_ip}:{port} in your browser.")
     print("Or use http://localhost:5000 for local access only.")
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    socketio.run(app, host='0.0.0.0', port=port, debug=debug)

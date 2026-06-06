@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection - allow users to read/write their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Username availability checking - allow reading username field for availability checking
+    // This rule allows any authenticated user to query for username existence
+    match /users/{userId} {
+      allow read: if request.auth != null && 
+                     resource.data.keys().hasOnly(['username']) ||
+                     request.query.limit <= 1;
+    }
+    
+    // Alternative approach: Create a separate usernames collection for faster lookups
+    match /usernames/{username} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == resource.data.uid;
+    }
+    
+    // Devices collection - users can only access their own devices
+    match /devices/{deviceId} {
+      allow read, write: if request.auth != null && 
+                           request.auth.uid == resource.data.ownerId;
+    }
+    
+    // Allow users to query their own devices
+    match /devices/{document=**} {
+      allow read: if request.auth != null && 
+                     request.auth.uid == resource.data.ownerId;
+    }
+  }
+}

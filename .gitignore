@@ -42,7 +42,6 @@ sdist/
 var/
 wheels/
 
-
 # VSCode/IDE
 .vscode/
 *.iml
@@ -71,15 +70,6 @@ firebase_auth/web/firebase-config-cdn.js
 .env.local
 .env.production
 
-# Firebase service account keys - CRITICAL SECURITY
-service-account-key.json
-**/service-account*.json
-**/*service-account*.json
-
-# Environment files - SENSITIVE DATA
-.env.*
-!.env.template
-
 # Android Application
 Application/
 
@@ -97,4 +87,4 @@ Application/
 **/local.properties
 
 # VS Code Code Runner
-tempCodeRunnerFile.*
+tempCodeRunnerFile.*service-account-key.json
